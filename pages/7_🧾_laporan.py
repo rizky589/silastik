@@ -15,24 +15,30 @@ db = init_firebase()
 ref = db.collection("buku_tamu")
 docs = ref.stream()
 
+# Fungsi bantu untuk parsing waktu + konversi zona
+def parse_datetime_to_jakarta(waktu):
+    if isinstance(waktu, datetime):
+        dt = waktu
+    elif isinstance(waktu, str):
+        try:
+            dt = datetime.fromisoformat(waktu)
+        except:
+            return None
+    else:
+        return None
+
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=pytz.UTC)
+    return dt.astimezone(pytz.timezone("Asia/Jakarta"))
+
 # Ambil data dari Firestore
 data = []
 for doc in docs:
     d = doc.to_dict()
     d["id"] = doc.id
 
-    # Tangani waktu_selesai agar aman
-    waktu = d.get("waktu_selesai")
-    if isinstance(waktu, datetime):
-        d["waktu_selesai"] = waktu.isoformat()
-    elif isinstance(waktu, str):
-        try:
-            parsed = datetime.fromisoformat(waktu)
-            d["waktu_selesai"] = parsed.isoformat()
-        except:
-            d["waktu_selesai"] = ""
-    else:
-        d["waktu_selesai"] = ""
+    d["waktu_selesai"] = parse_datetime_to_jakarta(d.get("waktu_selesai"))
+    d["waktu_masuk"] = parse_datetime_to_jakarta(d.get("waktu_masuk"))
 
     data.append(d)
 
@@ -42,8 +48,7 @@ if df.empty:
     st.warning("📭 Belum ada data pengunjung.")
     st.stop()
 
-# Konversi waktu_selesai ke datetime + timezone Jakarta
-df["waktu_selesai"] = pd.to_datetime(df["waktu_selesai"], errors="coerce").dt.tz_localize("UTC").dt.tz_convert("Asia/Jakarta")
+# Hapus data yang tidak memiliki waktu_selesai
 df = df.dropna(subset=["waktu_selesai"])
 df = df.sort_values(by="waktu_selesai", ascending=False)
 
@@ -75,7 +80,10 @@ st.dataframe(filtered_df, use_container_width=True)
 def convert_df_to_excel(df):
     output = BytesIO()
     df_excel = df.copy()
-    df_excel["waktu_selesai"] = df_excel["waktu_selesai"].dt.tz_localize(None)  # Hapus timezone
+    # Hapus timezone sebelum export
+    for col in ["waktu_selesai", "waktu_masuk"]:
+        if col in df_excel.columns:
+            df_excel[col] = df_excel[col].dt.tz_localize(None)
     with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
         df_excel.to_excel(writer, index=False, sheet_name="Laporan")
     return output.getvalue()
