@@ -4,8 +4,5 @@ gtts
 playsound
 pytz
 fpdf
-st_autorefresh
-BytesIO
-shutil
-autorefresh
+streamlit-autorefresh
 pandas
