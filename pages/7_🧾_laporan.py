@@ -7,14 +7,16 @@ from fpdf import FPDF
 import pytz
 
 st.set_page_config(page_title="Laporan", page_icon="🧾", layout="wide")
-st.title("Halaman Laporan")
+st.title("📄 Halaman Laporan Buku Tamu")
 
-# 🔌 Koneksi ke Firestore
+# 🔌 Inisialisasi Firebase
 db = init_firebase()
 ref = db.collection("buku_tamu")
 docs = ref.stream()
 
-# Fungsi bantu: parse waktu dan pastikan dalam zona Asia/Jakarta
+zona_jakarta = pytz.timezone("Asia/Jakarta")
+
+# Fungsi bantu konversi waktu
 def parse_datetime(waktu):
     if isinstance(waktu, datetime):
         dt = waktu
@@ -27,18 +29,20 @@ def parse_datetime(waktu):
         return None
 
     if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=pytz.UTC)
-    return dt.astimezone(pytz.timezone("Asia/Jakarta"))
+        dt = dt.replace(tzinfo=pytz.UTC)  # asumsikan UTC jika tidak ada timezone
+    return dt.astimezone(zona_jakarta)
 
-# Ambil dan bersihkan data
+# 🔄 Ambil dan proses data
 data = []
 for doc in docs:
     d = doc.to_dict()
-    if "waktu_selesai" in d:
-        parsed = parse_datetime(d["waktu_selesai"])
-        if parsed:
-            d["waktu_selesai"] = parsed
-            data.append(d)
+
+    # konversi waktu_masuk & waktu_selesai
+    d["waktu_masuk"] = parse_datetime(d.get("waktu_masuk"))
+    d["waktu_selesai"] = parse_datetime(d.get("waktu_selesai"))
+
+    if d["waktu_selesai"] is not None:  # hanya masukkan jika sudah selesai
+        data.append(d)
 
 df = pd.DataFrame(data)
 
@@ -46,10 +50,10 @@ if df.empty:
     st.warning("📭 Belum ada data pengunjung.")
     st.stop()
 
-# Urutkan berdasarkan waktu
+# Urutkan
 df = df.sort_values(by="waktu_selesai", ascending=False)
 
-# 📅 Filter Tanggal
+# 📅 Filter tanggal
 st.subheader("📆 Filter Berdasarkan Tanggal")
 col1, col2 = st.columns(2)
 with col1:
@@ -60,21 +64,12 @@ with col2:
 mask = (df["waktu_selesai"].dt.date >= start_date) & (df["waktu_selesai"].dt.date <= end_date)
 filtered_df = df[mask]
 
-st.success(f"Menampilkan {len(filtered_df)} data dari {start_date} s.d. {end_date}")
+st.success(f"✅ Menampilkan {len(filtered_df)} data dari {start_date} s.d. {end_date}")
 
-# Atur urutan kolom
+# 🧾 Urutkan kolom
 desired_order = [
-    "id_antrian",
-    "nama_lengkap",
-    "jenis_kelamin",
-    "email",
-    "pendidikan",
-    "instansi",
-    "kontak",
-    "layanan",
-    "catatan",
-    "waktu_masuk",
-    "waktu_selesai"
+    "id_antrian", "nama_lengkap", "jenis_kelamin", "email", "pendidikan",
+    "instansi", "kontak", "layanan", "catatan", "waktu_masuk", "waktu_selesai"
 ]
 existing_cols = [col for col in desired_order if col in filtered_df.columns]
 filtered_df = filtered_df[existing_cols + [col for col in filtered_df.columns if col not in existing_cols]]
@@ -82,13 +77,13 @@ filtered_df = filtered_df[existing_cols + [col for col in filtered_df.columns if
 # 🧾 Tampilkan tabel
 st.dataframe(filtered_df, use_container_width=True)
 
-# 🔽 Download Excel
+# 🔽 Export ke Excel
 def convert_df_to_excel(df):
     output = BytesIO()
     df_copy = df.copy()
-    # Pastikan datetime sudah dihapus timezone-nya agar bisa disimpan
-    if "waktu_selesai" in df_copy.columns:
-        df_copy["waktu_selesai"] = df_copy["waktu_selesai"].dt.tz_localize(None)
+    for col in ["waktu_masuk", "waktu_selesai"]:
+        if col in df_copy.columns:
+            df_copy[col] = df_copy[col].dt.tz_localize(None)
     with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
         df_copy.to_excel(writer, index=False, sheet_name="Laporan")
     return output.getvalue()
@@ -102,13 +97,13 @@ st.download_button(
     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 )
 
-# 📄 Download PDF
+# 📄 Export ke PDF
 def generate_full_pdf(dataframe):
     pdf = FPDF(orientation="L", unit="mm", format="A4")
     pdf.add_page()
     pdf.set_font("Arial", "B", 12)
     pdf.cell(0, 10, "Laporan Buku Tamu Lengkap", ln=1, align="C")
-    pdf.set_font("Arial", size=9)
+    pdf.set_font("Arial", size=8)
 
     col_width = 40
     row_height = 6
@@ -131,7 +126,7 @@ def generate_full_pdf(dataframe):
 pdf_bytes = generate_full_pdf(filtered_df)
 
 st.download_button(
-    "⬇️ Download PDF",
+    label="⬇️ Download PDF",
     data=pdf_bytes,
     file_name="laporan.pdf",
     mime="application/pdf"

@@ -73,13 +73,16 @@ if antrian_terkini:
 
     # ✅ Tombol tandai selesai
     st.markdown("<div style='text-align: center;'>", unsafe_allow_html=True)
-    if st.button("✅ Tandai Selesai"):
+
+    if st.button("Tandai Selesai"):
+        now_indo = datetime.now(zona)
         antrian_ref.document(antrian_id).update({
-            "status": "selesai",
-            "waktu_selesai": datetime.now(zona).strftime("%H:%M:%S")
-        })
-        st.success("✅ Antrian telah ditandai selesai.")
-        st.rerun()
+        "status": "selesai",
+        "waktu_selesai": now_indo
+    })
+    st.success("✅ Antrian telah ditandai selesai.")
+    st.rerun()
+
     st.markdown("</div>", unsafe_allow_html=True)
 else:
     st.markdown("<h2 style='text-align: center; color: gray;'>Tidak ada antrian yang sedang dilayani</h2>", unsafe_allow_html=True)
