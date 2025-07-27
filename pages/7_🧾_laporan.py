@@ -39,7 +39,6 @@ for doc in docs:
     if waktu_masuk and waktu_selesai:
         d["waktu_masuk"] = waktu_masuk
         d["waktu_selesai"] = waktu_selesai
-        d["durasi_pelayanan (menit)"] = round((waktu_selesai - waktu_masuk).total_seconds() / 60, 2)
         data.append(d)
 
 df = pd.DataFrame(data)
