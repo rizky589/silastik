@@ -15,8 +15,11 @@ st_autorefresh(interval=5000, key="auto_refresh_monitor")
 # 🌐 Locale Bahasa Indonesia
 try:
     locale.setlocale(locale.LC_TIME, 'id_ID.UTF-8')
-except:
-    locale.setlocale(locale.LC_TIME, 'ind')
+except locale.Error:
+    try:
+        locale.setlocale(locale.LC_TIME, 'id_ID')
+    except locale.Error:
+        locale.setlocale(locale.LC_TIME, '')  # fallback ke default sistem
 
 # 🔥 Inisialisasi Firebase
 db = init_firebase()
