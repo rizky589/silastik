@@ -1,91 +1,127 @@
 import streamlit as st
-from config_firebase import init_firebase
-from datetime import datetime
 import pandas as pd
-import io
+from datetime import datetime
+from config_firebase import init_firebase
+from io import BytesIO
 from fpdf import FPDF
+import pytz
 
-# Inisialisasi koneksi Firebase
+st.set_page_config(page_title="Laporan", page_icon="🧾", layout="wide")
+st.title("📊 Laporan Buku Tamu & Antrian")
+
+# 🔌 Koneksi ke Firestore
 db = init_firebase()
-buku_tamu_ref = db.collection("buku_tamu")
+ref = db.collection("buku_tamu")
+docs = ref.stream()
 
-# Konfigurasi halaman
-st.set_page_config(page_title="📄 Laporan", page_icon="📄", layout="wide")
-st.title("📄 Laporan Buku Tamu")
+# Fungsi bantu: parse waktu dan konversi ke Asia/Jakarta
+def parse_datetime(waktu):
+    if isinstance(waktu, datetime):
+        dt = waktu
+    elif isinstance(waktu, str):
+        try:
+            dt = datetime.fromisoformat(waktu)
+        except:
+            return None
+    else:
+        return None
 
-# Fungsi mengambil data dari Firestore
-@st.cache_data(ttl=600)
-def get_data():
-    docs = buku_tamu_ref.stream()
-    data = []
-    for doc in docs:
-        item = doc.to_dict()
-        item["id"] = doc.id
-        data.append(item)
-    return pd.DataFrame(data)
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=pytz.UTC)
+    return dt.astimezone(pytz.timezone("Asia/Jakarta"))
 
-# Fungsi filter data berdasarkan tanggal
-def filter_data(df, start_date, end_date):
-    df['tanggal'] = pd.to_datetime(df['tanggal'], errors='coerce')
-    return df[(df['tanggal'] >= pd.to_datetime(start_date)) & (df['tanggal'] <= pd.to_datetime(end_date))]
+# Ambil data dan parsing waktu
+data = []
+for doc in docs:
+    d = doc.to_dict()
+    waktu_masuk = parse_datetime(d.get("waktu_masuk"))
+    waktu_selesai = parse_datetime(d.get("waktu_selesai"))
+    if waktu_masuk and waktu_selesai:
+        d["waktu_masuk"] = waktu_masuk
+        d["waktu_selesai"] = waktu_selesai
+        data.append(d)
 
-# Input tanggal
+df = pd.DataFrame(data)
+
+if df.empty:
+    st.warning("📭 Belum ada data pengunjung yang selesai.")
+    st.stop()
+
+# Urutkan berdasarkan waktu selesai
+df = df.sort_values(by="waktu_selesai", ascending=False)
+
+# 📅 Filter tanggal
+st.subheader("📆 Filter Berdasarkan Tanggal")
 col1, col2 = st.columns(2)
 with col1:
-    start_date = st.date_input("Tanggal Mulai", value=datetime.now().replace(day=1))
+    start_date = st.date_input("Dari tanggal", df["waktu_selesai"].min().date())
 with col2:
-    end_date = st.date_input("Tanggal Selesai", value=datetime.now())
+    end_date = st.date_input("Sampai tanggal", df["waktu_selesai"].max().date())
 
-# Ambil dan filter data
-df = get_data()
-filtered_df = filter_data(df, start_date, end_date)
+mask = (df["waktu_selesai"].dt.date >= start_date) & (df["waktu_selesai"].dt.date <= end_date)
+filtered_df = df[mask]
 
-# Hapus kolom waktu_masuk dan waktu_selesai jika ada
-for col in ['waktu_masuk', 'waktu_selesai']:
-    if col in filtered_df.columns:
-        filtered_df.drop(columns=[col], inplace=True)
+st.success(f"Menampilkan {len(filtered_df)} data dari {start_date} s.d. {end_date}")
 
-st.dataframe(filtered_df, use_container_width=True)
+# 🔻 Kolom yang ditampilkan (hapus waktu_masuk, waktu_selesai, durasi)
+cols_hapus = {"waktu_masuk", "waktu_selesai", "durasi_pelayanan (menit)"}
+display_df = filtered_df[[col for col in filtered_df.columns if col not in cols_hapus]]
 
-# Tombol untuk ekspor CSV
-csv = filtered_df.to_csv(index=False).encode('utf-8')
+# 🧾 Tampilkan tabel
+st.dataframe(display_df, use_container_width=True)
+
+# ⬇️ Download Excel
+def convert_df_to_excel(df):
+    output = BytesIO()
+    df_copy = df.copy()
+    with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
+        df_copy.drop(columns=cols_hapus & set(df_copy.columns), errors='ignore') \
+               .to_excel(writer, index=False, sheet_name="Laporan")
+    return output.getvalue()
+
+excel_data = convert_df_to_excel(filtered_df)
+
 st.download_button(
-    label="📥 Download CSV",
-    data=csv,
-    file_name='laporan_buku_tamu.csv',
-    mime='text/csv'
+    label="⬇️ Download Excel",
+    data=excel_data,
+    file_name="laporan.xlsx",
+    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 )
 
-# Tombol untuk ekspor PDF
-class PDF(FPDF):
-    def header(self):
-        self.set_font('Arial', 'B', 12)
-        self.cell(0, 10, 'Laporan Buku Tamu', ln=True, align='C')
-
-    def table(self, data):
-        self.set_font('Arial', '', 10)
-        col_widths = [35, 35, 30, 30, 50]
-        headers = ['Tanggal', 'Nama', 'Keperluan', 'Loket', 'Keterangan']
-        for i, header in enumerate(headers):
-            self.cell(col_widths[i], 10, header, 1)
-        self.ln()
-        for index, row in data.iterrows():
-            self.cell(col_widths[0], 10, str(row.get('tanggal', '')), 1)
-            self.cell(col_widths[1], 10, str(row.get('nama', '')), 1)
-            self.cell(col_widths[2], 10, str(row.get('keperluan', '')), 1)
-            self.cell(col_widths[3], 10, str(row.get('loket', '')), 1)
-            self.cell(col_widths[4], 10, str(row.get('keterangan', '')), 1)
-            self.ln()
-
-if st.button("📄 Download PDF"):
-    pdf = PDF()
+# 📄 Download PDF
+def generate_pdf(df):
+    pdf = FPDF(orientation="L", unit="mm", format="A4")
     pdf.add_page()
-    pdf.table(filtered_df)
-    buffer = io.BytesIO()
-    pdf.output(buffer)
-    st.download_button(
-        label="📥 Simpan PDF",
-        data=buffer.getvalue(),
-        file_name="laporan_buku_tamu.pdf",
-        mime="application/pdf"
-    )
+    pdf.set_font("Arial", "B", 12)
+    pdf.cell(0, 10, "Laporan Buku Tamu", ln=1, align="C")
+    pdf.set_font("Arial", size=8)
+
+    table_df = df.drop(columns=cols_hapus & set(df.columns), errors='ignore')
+    headers = table_df.columns.tolist()
+    col_width = max(270 // len(headers), 25)
+    row_height = 6
+
+    # Header
+    for header in headers:
+        pdf.cell(col_width, row_height, str(header)[:20], border=1)
+    pdf.ln()
+
+    # Rows
+    for _, row in table_df.iterrows():
+        for col in headers:
+            val = row[col]
+            if isinstance(val, datetime):
+                val = val.strftime("%Y-%m-%d %H:%M")
+            pdf.cell(col_width, row_height, str(val)[:20], border=1)
+        pdf.ln()
+
+    return pdf.output(dest="S").encode("latin1")
+
+pdf_bytes = generate_pdf(filtered_df)
+
+st.download_button(
+    "⬇️ Download PDF",
+    data=pdf_bytes,
+    file_name="laporan.pdf",
+    mime="application/pdf"
+)
