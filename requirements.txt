@@ -8,3 +8,7 @@ pandas
 streamlit-lottie
 plotly
 playsound==1.2.2
+gspread
+oauth2client
+xlsxwriter
+openpyxl
