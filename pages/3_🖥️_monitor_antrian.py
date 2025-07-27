@@ -12,11 +12,14 @@ st.set_page_config(page_title="Monitor Antrian", page_icon="🎯", layout="wide"
 # 🔁 Auto-refresh setiap 5 detik
 st_autorefresh(interval=5000, key="auto_refresh_monitor")
 
-# 🌐 Locale Bahasa Indonesia
+# 🌐 Locale Bahasa Indonesia (dengan fallback aman)
 try:
     locale.setlocale(locale.LC_TIME, 'id_ID.UTF-8')
-except:
-    locale.setlocale(locale.LC_TIME, 'ind')
+except locale.Error:
+    try:
+        locale.setlocale(locale.LC_TIME, 'id_ID')  # Kadang cukup ini di Windows
+    except locale.Error:
+        locale.setlocale(locale.LC_TIME, '')  # Fallback ke default locale
 
 # 🔥 Inisialisasi Firebase
 db = init_firebase()
