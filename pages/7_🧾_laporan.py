@@ -74,9 +74,9 @@ desired_order = [
     "kontak",
     "layanan",
     "catatan",
-    "waktu_masuk",
-    "waktu_selesai",
-    "durasi_pelayanan (menit)"
+    #"waktu_masuk",
+    #"waktu_selesai",
+    #"durasi_pelayanan (menit)"
 ]
 existing_cols = [col for col in desired_order if col in filtered_df.columns]
 filtered_df = filtered_df[existing_cols + [col for col in filtered_df.columns if col not in existing_cols]]
