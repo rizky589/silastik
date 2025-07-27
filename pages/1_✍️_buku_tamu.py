@@ -1,6 +1,6 @@
 import streamlit as st
 from config_firebase import init_firebase
-from config_firebase import init_firebase
+import pytz
 from datetime import datetime
 import re
 
@@ -52,7 +52,8 @@ if submit:
     elif not (10 <= len(kontak_bersih) <= 12):
         st.error("❌ Nomor WA harus angka dan terdiri dari 10–12 digit.")
     else:
-        now = datetime.now()
+        tz = pytz.timezone("Asia/Jakarta")
+        now = datetime.now(tz)
         data = {
             "nama_lengkap": nama,
             "email": email,
