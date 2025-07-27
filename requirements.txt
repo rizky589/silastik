@@ -8,3 +8,4 @@ st_autorefresh
 BytesIO
 shutil
 autorefresh
+pandas
