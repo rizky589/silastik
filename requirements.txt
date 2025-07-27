@@ -6,3 +6,4 @@ fpdf
 streamlit-autorefresh
 pandas
 streamlit-lottie
+plotly
