@@ -1,0 +1,10 @@
+streamlit
+firebase-admin
+gtts
+playsound
+pytz
+fpdf
+st_autorefresh
+BytesIO
+shutil
+autorefresh
