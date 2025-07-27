@@ -1,5 +1,6 @@
 import streamlit as st
 from config_firebase import init_firebase
+from config_firebase import init_firebase
 import pandas as pd
 import plotly.express as px
 from datetime import datetime
