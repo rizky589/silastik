@@ -5,3 +5,4 @@ pytz
 fpdf
 streamlit-autorefresh
 pandas
+streamlit-lottie
