@@ -1,84 +1,137 @@
 import streamlit as st
+from config_firebase import init_firebase
 import pandas as pd
-import gspread
-from oauth2client.service_account import ServiceAccountCredentials
 import plotly.express as px
 from datetime import datetime
+import pytz
 
-# Cek login
-if "login" not in st.session_state or not st.session_state["login"]:
-    st.warning("⚠️ Silakan login terlebih dahulu.")
-    st.stop()
-
-# Set judul halaman
+# ----------------------------
+# 🧭 Konfigurasi Tampilan App
+# ----------------------------
 st.set_page_config(page_title="Dashboard", page_icon="📊", layout="wide")
-st.title("📊 Dashboard Statistik Pengunjung")
+st.markdown("<h1 style='text-align: center; color: #4e73df;'>📊 Dashboard Statistik Pengunjung</h1>", unsafe_allow_html=True)
+st.markdown("---")
 
-# Koneksi ke Google Sheets
-def get_sheet():
-    scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-    creds = ServiceAccountCredentials.from_json_keyfile_name("service_account.json", scope)
-    client = gspread.authorize(creds)
-    return client.open("silastik_buku_tamu").worksheet("pengunjung")
+# ----------------------------
+# 🔌 Inisialisasi Firebase & Ambil Data
+# ----------------------------
+db = init_firebase()
+buku_tamu_ref = db.collection("buku_tamu")
+docs = buku_tamu_ref.stream()
 
-# Ambil data dari sheet
-sheet = get_sheet()
-data = sheet.get_all_records()
+def parse_waktu(waktu):
+    """Parsing datetime dengan konversi ke Asia/Jakarta"""
+    if isinstance(waktu, datetime):
+        dt = waktu
+    elif isinstance(waktu, str):
+        try:
+            dt = datetime.fromisoformat(waktu)
+        except:
+            return None
+    else:
+        return None
 
-# Buat DataFrame
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=pytz.UTC)
+    return dt.astimezone(pytz.timezone("Asia/Jakarta"))
+
+data = []
+for doc in docs:
+    item = doc.to_dict()
+    waktu = item.get("waktu_selesai")
+    parsed = parse_waktu(waktu)
+    if parsed:
+        item["waktu_selesai"] = parsed
+        data.append(item)
+
 df = pd.DataFrame(data)
 
 if df.empty:
-    st.info("Belum ada data pengunjung yang tersedia.")
+    st.warning("📭 Belum ada data buku tamu.")
     st.stop()
 
-# Pastikan kolom datetime dikonversi dengan aman
-for col in ["waktu_masuk", "waktu_selesai"]:
-    df[col] = pd.to_datetime(df[col], errors="coerce")
-    df[col] = df[col].dt.tz_localize("UTC").dt.tz_convert("Asia/Jakarta")
+# ----------------------------
+# 🧹 Praproses Data
+# ----------------------------
+df["tanggal"] = df["waktu_selesai"].dt.date
+df["bulan"] = df["waktu_selesai"].dt.to_period("M").astype(str)
+df["tahun"] = df["waktu_selesai"].dt.year
 
-# Tambahkan kolom tanggal saja
-df["tanggal"] = df["waktu_masuk"].dt.date
-df["bulan"] = df["waktu_masuk"].dt.to_period("M").astype(str)
-
-# =========================
-# Statistik Ringkas
-# =========================
-st.subheader("🔢 Statistik Ringkas")
-
+# ----------------------------
+# 🔢 Statistik Umum
+# ----------------------------
+st.subheader("📈 Statistik Umum")
 col1, col2 = st.columns(2)
 with col1:
-    jumlah_hari_ini = df[df["tanggal"] == datetime.now().date()].shape[0]
-    st.metric("👥 Jumlah Hari Ini", jumlah_hari_ini)
-
+    st.metric("👥 Total Pengunjung", len(df))
 with col2:
-    bulan_ini = datetime.now().strftime("%Y-%m")
-    jumlah_bulan_ini = df[df["bulan"] == bulan_ini].shape[0]
-    st.metric("📆 Jumlah Bulan Ini", jumlah_bulan_ini)
+    st.metric("📅 Hari Aktif", df["tanggal"].nunique())
 
-# =========================
-# Grafik Harian
-# =========================
-st.subheader("📈 Grafik Kunjungan Harian")
+# ----------------------------
+# 📅 Grafik Kunjungan Harian
+# ----------------------------
+st.subheader("📅 Grafik Garis Kunjungan Harian")
+harian = df.groupby("tanggal").size().reset_index(name="jumlah")
+fig1 = px.line(
+    harian,
+    x="tanggal",
+    y="jumlah",
+    markers=True,
+    title="Jumlah Pengunjung per Hari",
+    template="plotly_white",
+    color_discrete_sequence=["#007bff"]
+)
+fig1.update_layout(xaxis_title="Tanggal", yaxis_title="Jumlah")
+st.plotly_chart(fig1, use_container_width=True)
 
-kunjungan_harian = df.groupby("tanggal").size().reset_index(name="jumlah")
-fig_harian = px.bar(kunjungan_harian, x="tanggal", y="jumlah", labels={"jumlah": "Jumlah Kunjungan"}, title="Kunjungan Harian", color="jumlah")
-st.plotly_chart(fig_harian, use_container_width=True)
+# ----------------------------
+# 📆 Grafik Batang Bulanan Tahun 2025
+# ----------------------------
+st.subheader("📆 Grafik Batang Kunjungan Bulanan (2025)")
+df_2025 = df[df["tahun"] == 2025].copy()
+df_2025["bulan_angka"] = df_2025["waktu_selesai"].dt.month
 
-# =========================
-# Grafik Bulanan
-# =========================
-st.subheader("📆 Grafik Kunjungan Bulanan")
+bulan_lengkap = {
+    1: "Januari", 2: "Februari", 3: "Maret", 4: "April",
+    5: "Mei", 6: "Juni", 7: "Juli", 8: "Agustus",
+    9: "September", 10: "Oktober", 11: "November", 12: "Desember"
+}
 
-kunjungan_bulanan = df.groupby("bulan").size().reset_index(name="jumlah")
-fig_bulanan = px.bar(kunjungan_bulanan, x="bulan", y="jumlah", labels={"jumlah": "Jumlah Kunjungan"}, title="Kunjungan Bulanan", color="jumlah")
-st.plotly_chart(fig_bulanan, use_container_width=True)
+bulanan = (
+    df_2025.groupby("bulan_angka")
+    .size()
+    .reindex(range(1, 13), fill_value=0)
+    .reset_index()
+)
+bulanan.columns = ["bulan_angka", "Jumlah Pengunjung"]
+bulanan["Bulan"] = bulanan["bulan_angka"].map(bulan_lengkap)
 
-# =========================
-# Tabel Data Terbaru
-# =========================
-st.subheader("📋 Daftar Pengunjung Terbaru")
-df_tampil = df[["nama", "keperluan", "waktu_masuk", "waktu_selesai"]].sort_values(by="waktu_masuk", ascending=False)
-df_tampil["waktu_masuk"] = df_tampil["waktu_masuk"].dt.strftime("%d-%m-%Y %H:%M:%S")
-df_tampil["waktu_selesai"] = df_tampil["waktu_selesai"].dt.strftime("%d-%m-%Y %H:%M:%S")
-st.dataframe(df_tampil, use_container_width=True)
+fig2 = px.bar(
+    bulanan,
+    x="Bulan",
+    y="Jumlah Pengunjung",
+    text="Jumlah Pengunjung",
+    template="plotly_white",
+    color_discrete_sequence=["#007bff"]
+)
+fig2.update_layout(xaxis_title="Bulan", yaxis_title="Jumlah")
+st.plotly_chart(fig2, use_container_width=True)
+
+# ----------------------------
+# 🥧 Grafik Pie Jenis Layanan
+# ----------------------------
+if "layanan" in df.columns:
+    st.subheader("🥧 Persentase Jenis Layanan")
+    layanan_count = df["layanan"].value_counts().reset_index()
+    layanan_count.columns = ["Layanan", "Jumlah"]
+    fig3 = px.pie(
+        layanan_count,
+        names="Layanan",
+        values="Jumlah",
+        title="Distribusi Layanan",
+        color_discrete_sequence=px.colors.qualitative.Set3,
+        hole=0.3
+    )
+    st.plotly_chart(fig3, use_container_width=True)
+else:
+    st.info("📌 Kolom 'layanan' tidak tersedia dalam data.")
