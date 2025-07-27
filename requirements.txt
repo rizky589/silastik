@@ -1,7 +1,6 @@
 streamlit
 firebase-admin
 gtts
-playsound
 pytz
 fpdf
 streamlit-autorefresh
