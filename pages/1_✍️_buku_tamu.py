@@ -64,7 +64,7 @@ if submit:
             "layanan": layanan,
             "catatan": catatan,
             "waktu_masuk": now.strftime("%Y-%m-%d %H:%M:%S"),
-            "waktu_selesai": now,
+            "waktu_selesai": now.strftime("%Y-%m-%d %H:%M:%S"),
             "status": "selesai"
         }
 
