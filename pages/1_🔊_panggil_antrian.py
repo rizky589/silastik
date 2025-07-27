@@ -20,8 +20,10 @@ if "login" not in st.session_state or not st.session_state["login"]:
 @st.cache_resource
 def get_db():
     return init_firebase()
+
 db = get_db()
 antrian_ref = db.collection("antrian")
+buku_tamu_ref = db.collection("buku_tamu")
 
 # Zona waktu
 tz = pytz.timezone("Asia/Jakarta")
@@ -64,17 +66,36 @@ if next_antrian:
     if col1.button("🔔 Panggil Berikutnya"):
         try:
             now = datetime.now(tz)
+
+            # Update status di koleksi antrian
             antrian_ref.document(next_antrian.id).update({
                 "status": "melayani",
-                "waktu_panggil": now.strftime("%H:%M:%S"),
+                "waktu": now.strftime("%H:%M:%S"),
                 "timestamp": now
             })
+
+            # Tambahkan ke buku tamu jika belum ada
+            if not buku_tamu_ref.document(next_antrian.id).get().exists:
+                buku_tamu_ref.document(next_antrian.id).set({
+                    "id_antrian": next_antrian.id,
+                    "nama_lengkap": data.get("nama"),
+                    "jenis_kelamin": data.get("jenis_kelamin", ""),
+                    "email": data.get("email", ""),
+                    "pendidikan": data.get("pendidikan", ""),
+                    "instansi": data.get("instansi", ""),
+                    "kontak": data.get("kontak", ""),
+                    "layanan": data.get("keperluan"),
+                    "catatan": data.get("catatan", ""),
+                    "waktu_masuk": now,
+                    "waktu_selesai": None
+                })
 
             st.session_state["id_antrian"] = next_antrian.id
 
             tts(f"Nomor antrian {data['no']}. Atas nama {data['nama']}. Silakan ke P-S-T {data['loket']}.")
             st.success(f"✅ Antrian {data['no']} dipanggil.")
             st.rerun()
+
         except Exception as e:
             st.error(f"❌ Gagal memanggil antrian: {e}")
 
@@ -89,6 +110,7 @@ if next_antrian:
         antrian_ref.document(next_antrian.id).update({"status": "pause"})
         st.warning(f"⏸ Antrian {data['no']} di-pause.")
         st.rerun()
+
 else:
     st.success("✅ Tidak ada antrian menunggu saat ini.")
 

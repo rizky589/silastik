@@ -12,18 +12,16 @@ st.set_page_config(page_title="Monitor Antrian", page_icon="🎯", layout="wide"
 # 🔁 Auto-refresh setiap 5 detik
 st_autorefresh(interval=5000, key="auto_refresh_monitor")
 
-# 🌐 Locale Bahasa Indonesia (dengan fallback aman)
+# 🌐 Locale Bahasa Indonesia
 try:
     locale.setlocale(locale.LC_TIME, 'id_ID.UTF-8')
-except locale.Error:
-    try:
-        locale.setlocale(locale.LC_TIME, 'id_ID')  # Kadang cukup ini di Windows
-    except locale.Error:
-        locale.setlocale(locale.LC_TIME, '')  # Fallback ke default locale
+except:
+    locale.setlocale(locale.LC_TIME, 'ind')
 
 # 🔥 Inisialisasi Firebase
 db = init_firebase()
 antrian_ref = db.collection("antrian")
+buku_tamu_ref = db.collection("buku_tamu")
 
 # ⏰ Waktu saat ini
 zona = pytz.timezone("Asia/Jakarta")
@@ -73,16 +71,25 @@ if antrian_terkini:
 
     # ✅ Tombol tandai selesai
     st.markdown("<div style='text-align: center;'>", unsafe_allow_html=True)
+    if st.button("✅ Tandai Selesai"):
+        waktu_selesai = datetime.now(zona)
 
-    if st.button("Tandai Selesai"):
-        now_indo = datetime.now(zona)
-        antrian_ref.document(antrian_id).update({
-        "status": "selesai",
-        "waktu_selesai": now_indo
-    })
-    st.success("✅ Antrian telah ditandai selesai.")
-    st.rerun()
+        try:
+            # update status dan waktu selesai di antrian
+            antrian_ref.document(antrian_id).update({
+                "status": "selesai",
+                "waktu_selesai": waktu_selesai.strftime("%H:%M:%S")
+            })
 
+            # update waktu selesai di buku tamu
+            buku_tamu_ref.document(antrian_id).update({
+                "waktu_selesai": waktu_selesai
+            })
+
+            st.success("✅ Antrian telah ditandai selesai.")
+            st.rerun()
+        except Exception as e:
+            st.error(f"❌ Gagal menandai selesai: {e}")
     st.markdown("</div>", unsafe_allow_html=True)
 else:
     st.markdown("<h2 style='text-align: center; color: gray;'>Tidak ada antrian yang sedang dilayani</h2>", unsafe_allow_html=True)
