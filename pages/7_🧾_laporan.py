@@ -6,17 +6,16 @@ from io import BytesIO
 from fpdf import FPDF
 import pytz
 
-# Konfigurasi halaman
 st.set_page_config(page_title="Laporan", page_icon="🧾", layout="wide")
-st.title("📄 Halaman Laporan Buku Tamu")
+st.title("Halaman Laporan")
 
 # 🔌 Koneksi ke Firestore
 db = init_firebase()
 ref = db.collection("buku_tamu")
 docs = ref.stream()
 
-# Fungsi bantu untuk parsing waktu + konversi zona
-def parse_datetime_to_jakarta(waktu):
+# Fungsi bantu: parse waktu dan pastikan dalam zona Asia/Jakarta
+def parse_datetime(waktu):
     if isinstance(waktu, datetime):
         dt = waktu
     elif isinstance(waktu, str):
@@ -31,16 +30,15 @@ def parse_datetime_to_jakarta(waktu):
         dt = dt.replace(tzinfo=pytz.UTC)
     return dt.astimezone(pytz.timezone("Asia/Jakarta"))
 
-# Ambil data dari Firestore
+# Ambil dan bersihkan data
 data = []
 for doc in docs:
     d = doc.to_dict()
-    d["id"] = doc.id
-
-    d["waktu_selesai"] = parse_datetime_to_jakarta(d.get("waktu_selesai"))
-    d["waktu_masuk"] = parse_datetime_to_jakarta(d.get("waktu_masuk"))
-
-    data.append(d)
+    if "waktu_selesai" in d:
+        parsed = parse_datetime(d["waktu_selesai"])
+        if parsed:
+            d["waktu_selesai"] = parsed
+            data.append(d)
 
 df = pd.DataFrame(data)
 
@@ -48,8 +46,7 @@ if df.empty:
     st.warning("📭 Belum ada data pengunjung.")
     st.stop()
 
-# Hapus data yang tidak memiliki waktu_selesai
-df = df.dropna(subset=["waktu_selesai"])
+# Urutkan berdasarkan waktu
 df = df.sort_values(by="waktu_selesai", ascending=False)
 
 # 📅 Filter Tanggal
@@ -61,31 +58,39 @@ with col2:
     end_date = st.date_input("Sampai tanggal", df["waktu_selesai"].max().date())
 
 mask = (df["waktu_selesai"].dt.date >= start_date) & (df["waktu_selesai"].dt.date <= end_date)
-filtered_df = df.loc[mask]
+filtered_df = df[mask]
 
-st.success(f"✅ Menampilkan {len(filtered_df)} data dari {start_date} s.d. {end_date}")
+st.success(f"Menampilkan {len(filtered_df)} data dari {start_date} s.d. {end_date}")
 
 # Atur urutan kolom
 desired_order = [
-    "id_antrian", "nama_lengkap", "jenis_kelamin", "email", "pendidikan",
-    "instansi", "kontak", "layanan", "waktu_masuk", "waktu_selesai", "catatan"
+    "id_antrian",
+    "nama_lengkap",
+    "jenis_kelamin",
+    "email",
+    "pendidikan",
+    "instansi",
+    "kontak",
+    "layanan",
+    "catatan",
+    "waktu_masuk",
+    "waktu_selesai"
 ]
 existing_cols = [col for col in desired_order if col in filtered_df.columns]
 filtered_df = filtered_df[existing_cols + [col for col in filtered_df.columns if col not in existing_cols]]
 
-# 🌐 Tampilkan Data
+# 🧾 Tampilkan tabel
 st.dataframe(filtered_df, use_container_width=True)
 
-# 🔽 Download sebagai Excel
+# 🔽 Download Excel
 def convert_df_to_excel(df):
     output = BytesIO()
-    df_excel = df.copy()
-    # Hapus timezone sebelum export
-    for col in ["waktu_selesai", "waktu_masuk"]:
-        if col in df_excel.columns:
-            df_excel[col] = df_excel[col].dt.tz_localize(None)
+    df_copy = df.copy()
+    # Pastikan datetime sudah dihapus timezone-nya agar bisa disimpan
+    if "waktu_selesai" in df_copy.columns:
+        df_copy["waktu_selesai"] = df_copy["waktu_selesai"].dt.tz_localize(None)
     with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
-        df_excel.to_excel(writer, index=False, sheet_name="Laporan")
+        df_copy.to_excel(writer, index=False, sheet_name="Laporan")
     return output.getvalue()
 
 excel_data = convert_df_to_excel(filtered_df)
@@ -97,20 +102,20 @@ st.download_button(
     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 )
 
-# 📄 Download sebagai PDF
+# 📄 Download PDF
 def generate_full_pdf(dataframe):
     pdf = FPDF(orientation="L", unit="mm", format="A4")
     pdf.add_page()
     pdf.set_font("Arial", "B", 12)
     pdf.cell(0, 10, "Laporan Buku Tamu Lengkap", ln=1, align="C")
-    pdf.set_font("Arial", size=8)
+    pdf.set_font("Arial", size=9)
 
     col_width = 40
     row_height = 6
 
     headers = dataframe.columns.tolist()
     for header in headers:
-        pdf.cell(col_width, row_height, str(header)[:15], border=1)
+        pdf.cell(col_width, row_height, header[:15], border=1)
     pdf.ln()
 
     for _, row in dataframe.iterrows():
@@ -126,7 +131,7 @@ def generate_full_pdf(dataframe):
 pdf_bytes = generate_full_pdf(filtered_df)
 
 st.download_button(
-    label="⬇️ Download PDF",
+    "⬇️ Download PDF",
     data=pdf_bytes,
     file_name="laporan.pdf",
     mime="application/pdf"
