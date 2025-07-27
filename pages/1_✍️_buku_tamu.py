@@ -63,9 +63,9 @@ if submit:
             "kontak": kontak_bersih,
             "layanan": layanan,
             "catatan": catatan,
-            "waktu_masuk": now.strftime("%Y-%m-%d %H:%M:%S"),
-            "waktu_selesai": now.strftime("%Y-%m-%d %H:%M:%S"),
-            "status": "selesai"
+            #"waktu_masuk": now.strftime("%Y-%m-%d %H:%M:%S"),
+            #"waktu_selesai": now.strftime("%Y-%m-%d %H:%M:%S"),
+            #"status": "selesai"
         }
 
         try:

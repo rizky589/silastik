@@ -62,8 +62,8 @@ df["tahun"] = df["waktu_selesai"].dt.year
 # ----------------------------
 st.subheader("📈 Statistik Umum")
 col1, col2 = st.columns(2)
-with col1:
-    st.metric("👥 Total Pengunjung", len(df))
+#with col1:
+    #st.metric("👥 Total Pengunjung", len(df))
 with col2:
     st.metric("📅 Hari Aktif", df["tanggal"].nunique())
 
