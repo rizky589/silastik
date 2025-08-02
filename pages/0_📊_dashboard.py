@@ -9,7 +9,7 @@ import pytz
 # 🧭 Konfigurasi Tampilan App
 # ----------------------------
 st.set_page_config(page_title="Dashboard", page_icon="📊", layout="wide")
-st.markdown("<h1 style='text-align: center; color: #4e73df;'>📊 Dashboard Statistik Pengunjung</h1>", unsafe_allow_html=True)
+st.markdown("<h1 style='text-align: center; color: #FFA500;'>📊 Dashboard Statistik Pengunjung</h1>", unsafe_allow_html=True)
 st.markdown("---")
 
 # ----------------------------
@@ -68,7 +68,7 @@ col1, col2 = st.columns(2)
 # ----------------------------
 # 📅 Grafik Kunjungan Harian
 # ----------------------------
-st.subheader("📅 Grafik Garis Kunjungan Harian")
+st.subheader("Grafik Garis Kunjungan Harian")
 harian = df.groupby("tanggal").size().reset_index(name="jumlah")
 fig1 = px.line(
     harian,
@@ -85,7 +85,7 @@ st.plotly_chart(fig1, use_container_width=True)
 # ----------------------------
 # 📆 Grafik Batang Bulanan Tahun 2025
 # ----------------------------
-st.subheader("📆 Grafik Batang Kunjungan Bulanan (2025)")
+st.subheader("Grafik Batang Kunjungan Bulanan (2025)")
 df_2025 = df[df["tahun"] == 2025].copy()
 df_2025["bulan_angka"] = df_2025["waktu_selesai"].dt.month
 
@@ -110,7 +110,7 @@ fig2 = px.bar(
     y="Jumlah Pengunjung",
     text="Jumlah Pengunjung",
     template="plotly_white",
-    color_discrete_sequence=["#007bff"]
+    color_discrete_sequence=["#00FF00"]
 )
 fig2.update_layout(xaxis_title="Bulan", yaxis_title="Jumlah")
 st.plotly_chart(fig2, use_container_width=True)
@@ -119,14 +119,14 @@ st.plotly_chart(fig2, use_container_width=True)
 # 🥧 Grafik Pie Jenis Layanan
 # ----------------------------
 if "layanan" in df.columns:
-    st.subheader("🥧 Persentase Jenis Layanan")
+    st.subheader("Persentase Jenis Layanan")
     layanan_count = df["layanan"].value_counts().reset_index()
     layanan_count.columns = ["Layanan", "Jumlah"]
     fig3 = px.pie(
         layanan_count,
         names="Layanan",
         values="Jumlah",
-        title="Distribusi Layanan",
+        title="Layanan",
         color_discrete_sequence=px.colors.qualitative.Set3,
         hole=0.3
     )

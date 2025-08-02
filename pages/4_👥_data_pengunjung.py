@@ -50,12 +50,12 @@ df["hari"] = df["waktu_selesai"].dt.day_name()
 df = df[df["waktu_selesai"].dt.weekday < 5]
 
 # Tabel Harian
-st.markdown("### 📅 Tabel Data Pengunjung Harian (Hari Kerja)")
+st.markdown("### Tabel Data Pengunjung Harian (Hari Kerja)")
 harian = df.groupby("tanggal").agg(jumlah_pengunjung=("nama_lengkap", "count")).reset_index()
 st.dataframe(harian, use_container_width=True)
 
 # Tabel Bulanan
-st.markdown("### 🗓️ Tabel Data Pengunjung Bulanan")
+st.markdown("### Tabel Data Pengunjung Bulanan")
 bulanan = df.groupby("bulan").agg(jumlah_pengunjung=("nama_lengkap", "count")).reset_index()
 st.dataframe(bulanan, use_container_width=True)
 

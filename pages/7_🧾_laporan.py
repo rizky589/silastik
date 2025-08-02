@@ -7,7 +7,7 @@ from fpdf import FPDF
 import pytz
 
 st.set_page_config(page_title="Laporan", page_icon="🧾", layout="wide")
-st.title("📊 Laporan Buku Tamu & Antrian")
+st.title("Laporan Buku Tamu & Antrian")
 
 # 🔌 Koneksi ke Firestore
 db = init_firebase()
@@ -50,7 +50,7 @@ if df.empty:
 df = df.sort_values(by="waktu_selesai", ascending=False)
 
 # 📅 Filter tanggal
-st.subheader("📆 Filter Berdasarkan Tanggal")
+st.subheader("Filter Berdasarkan Tanggal")
 col1, col2 = st.columns(2)
 with col1:
     start_date = st.date_input("Dari tanggal", df["waktu_selesai"].min().date())
