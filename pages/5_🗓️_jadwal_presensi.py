@@ -35,8 +35,8 @@ os.makedirs(foto_dir, exist_ok=True)
 
 # SHIFT WAKTU TETAP
 shifts = {
-    "Pagi": (time(7, 30), time(8, 30)),
-    "Siang": (time(12, 0), time(17, 0))
+    "Pagi": (time(8, 0), time(12, 0)),
+    "Siang": (time(13, 0), time(16, 30))
 }
 
 # Presensi
