@@ -119,14 +119,14 @@ st.plotly_chart(fig2, use_container_width=True)
 # 🥧 Grafik Pie Jenis Layanan
 # ----------------------------
 if "layanan" in df.columns:
-    st.subheader("🥧 Persentase Jenis Layanan")
+    st.subheader("Persentase Jenis Layanan")
     layanan_count = df["layanan"].value_counts().reset_index()
     layanan_count.columns = ["Layanan", "Jumlah"]
     fig3 = px.pie(
         layanan_count,
         names="Layanan",
         values="Jumlah",
-        title="Distribusi Layanan",
+        title="Layanan",
         color_discrete_sequence=px.colors.qualitative.Set3,
         hole=0.3
     )
