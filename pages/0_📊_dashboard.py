@@ -110,7 +110,7 @@ fig2 = px.bar(
     y="Jumlah Pengunjung",
     text="Jumlah Pengunjung",
     template="plotly_white",
-    color_discrete_sequence=["#09D609A2"]
+    color_discrete_sequence=["#00FF00A2"]
 )
 fig2.update_layout(xaxis_title="Bulan", yaxis_title="Jumlah")
 st.plotly_chart(fig2, use_container_width=True)
