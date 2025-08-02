@@ -102,7 +102,7 @@ st.markdown("---")
 st.subheader("📋 Status Seluruh Antrian Hari Ini")
 
 status_style = {
-    "menunggu": "🟡 Menunggu",
+    "menunggu": "🟠 Menunggu",
     "melayani": "🟢 Melayani",
     "selesai": "🔵 Selesai"
 }
