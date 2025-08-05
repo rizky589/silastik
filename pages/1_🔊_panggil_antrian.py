@@ -23,7 +23,8 @@ def get_db():
 
 db = get_db()
 antrian_ref = db.collection("antrian")
-buku_tamu_ref = db.collection("buku_tamu")
+# 🔥 Tidak perlu akses buku_tamu di sini
+# buku_tamu_ref = db.collection("buku_tamu")
 
 # Zona waktu
 tz = pytz.timezone("Asia/Jakarta")
@@ -48,11 +49,8 @@ def tts(text):
 
 # Ambil antrian dengan status 'menunggu' untuk hari ini
 next_antrian = None
-docs = antrian_ref.where(field_path="tanggal", op_string="==", value=tanggal) \
-                  .where(field_path="status", op_string="==", value="menunggu") \
-                  .order_by("waktu") \
-                  .limit(1) \
-                  .stream()
+docs = antrian_ref.where("tanggal", "==", tanggal).where("status", "==", "menunggu") \
+                  .order_by("waktu").limit(1).stream()
 
 for doc in docs:
     next_antrian = doc
@@ -77,24 +75,10 @@ if next_antrian:
                 "timestamp": now
             })
 
-            # Tambahkan ke buku tamu jika belum ada
-            if not buku_tamu_ref.document(next_antrian.id).get().exists:
-                buku_tamu_ref.document(next_antrian.id).set({
-                    "id_antrian": next_antrian.id,
-                    "nama_lengkap": data.get("nama"),
-                    "jenis_kelamin": data.get("jenis_kelamin", ""),
-                    "email": data.get("email", ""),
-                    "pendidikan": data.get("pendidikan", ""),
-                    "instansi": data.get("instansi", ""),
-                    "kontak": data.get("kontak", ""),
-                    "layanan": data.get("keperluan"),
-                    "catatan": data.get("catatan", ""),
-                    "waktu_masuk": now,
-                    "waktu_selesai": None
-                })
-
+            # ✅ Simpan ID antrian yang dipanggil ke session
             st.session_state["id_antrian"] = next_antrian.id
 
+            # 🔊 Panggil suara
             tts(f"Nomor antrian {data['no']}. Atas nama {data['nama']}. Silakan ke P-S-T {data['loket']}.")
             st.success(f"✅ Antrian {data['no']} dipanggil.")
             st.rerun()
@@ -121,7 +105,7 @@ else:
 st.markdown("---")
 if st.button("🗑️ Reset Antrian Hari Ini"):
     try:
-        docs_today = antrian_ref.where(field_path="tanggal", op_string="==", value=tanggal).stream()
+        docs_today = antrian_ref.where("tanggal", "==", tanggal).stream()
         deleted = 0
         for doc in docs_today:
             antrian_ref.document(doc.id).delete()

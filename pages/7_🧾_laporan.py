@@ -15,19 +15,15 @@ ref = db.collection("buku_tamu")
 docs = ref.stream()
 
 # Fungsi bantu: parsing waktu & konversi ke Asia/Jakarta
+from google.cloud.firestore_v1 import DocumentSnapshot
+
 def parse_datetime(waktu):
     if isinstance(waktu, datetime):
-        dt = waktu
-    elif isinstance(waktu, str):
-        try:
-            dt = datetime.fromisoformat(waktu)
-        except:
-            return None
-    else:
+        return waktu.astimezone(pytz.timezone("Asia/Jakarta"))
+    try:
+        return datetime.fromisoformat(str(waktu)).astimezone(pytz.timezone("Asia/Jakarta"))
+    except:
         return None
-    if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=pytz.UTC)
-    return dt.astimezone(pytz.timezone("Asia/Jakarta"))
 
 # Ambil & bersihkan data
 data = []

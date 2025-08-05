@@ -120,7 +120,7 @@ if "tiket_terakhir" in st.session_state:
         st.write(f"**No Antrian:** {tiket['no']}")
         st.write(f"**Nama:** {tiket['nama']}")
         st.write(f"**Keperluan:** {tiket['keperluan']}")
-        st.write(f"**Loket:** {tiket['loket']}")
+        st.write(f"**PST:** {tiket['loket']}")
         st.write(f"**Tanggal:** {tiket['tanggal']}")
         st.write(f"**Waktu:** {tiket['waktu']}")
 
