@@ -12,14 +12,21 @@ st.set_page_config(page_title="Monitor Antrian", page_icon="🎯", layout="wide"
 # 🔁 Auto-refresh setiap 5 detik
 st_autorefresh(interval=5000, key="auto_refresh_monitor")
 
-# 🌐 Locale Bahasa Indonesia
-try:
-    locale.setlocale(locale.LC_TIME, 'id_ID.UTF-8')
-except locale.Error:
-    try:
-        locale.setlocale(locale.LC_TIME, 'id_ID')
-    except locale.Error:
-        locale.setlocale(locale.LC_TIME, '')  # fallback ke default sistem
+# Fungsi format tanggal manual ke Bahasa Indonesia
+def format_tanggal_indonesia(dt: datetime) -> str:
+    hari_dict = {
+        "Monday": "Senin", "Tuesday": "Selasa", "Wednesday": "Rabu",
+        "Thursday": "Kamis", "Friday": "Jumat", "Saturday": "Sabtu", "Sunday": "Minggu"
+    }
+    bulan_dict = {
+        "January": "Januari", "February": "Februari", "March": "Maret",
+        "April": "April", "May": "Mei", "June": "Juni",
+        "July": "Juli", "August": "Agustus", "September": "September",
+        "October": "Oktober", "November": "November", "December": "Desember"
+    }
+    hari = hari_dict[dt.strftime("%A")]
+    bulan = bulan_dict[dt.strftime("%B")]
+    return f"{hari}, {dt.day} {bulan} {dt.year}"
 
 # 🔥 Inisialisasi Firebase
 db = init_firebase()
@@ -31,7 +38,7 @@ zona = pytz.timezone("Asia/Jakarta")
 now = datetime.now(zona)
 hari_ini = now.strftime("%Y-%m-%d")
 jam_sekarang = now.strftime("%H:%M:%S")
-tanggal_lengkap = now.strftime("%A, %d %B %Y").upper()
+tanggal_lengkap = format_tanggal_indonesia(now).upper()
 
 # 📰 === RUNNING TEXT ===
 running_text = f"""
@@ -45,8 +52,8 @@ st.markdown(running_text, unsafe_allow_html=True)
 st.markdown("<br>", unsafe_allow_html=True)
 
 # 🔎 Ambil antrian yang sedang dilayani
-docs = antrian_ref.where(field_path="status", op_string="==", value="melayani") \
-                  .where(field_path="tanggal", op_string="==", value=hari_ini) \
+docs = antrian_ref.where("status", "==", "melayani") \
+                  .where("tanggal", "==", hari_ini) \
                   .order_by("timestamp", direction="DESCENDING") \
                   .limit(1).stream()
 
@@ -61,7 +68,7 @@ for doc in docs:
 st.markdown("<br>", unsafe_allow_html=True)
 if antrian_terkini:
     tanggal_obj = datetime.strptime(antrian_terkini.get("tanggal"), "%Y-%m-%d")
-    tanggal_str = tanggal_obj.strftime("%A, %d %B %Y").upper()
+    tanggal_str = format_tanggal_indonesia(tanggal_obj).upper()
 
     st.markdown(f"""
         <div style='text-align: center; font-family: Arial, sans-serif;'>
@@ -111,10 +118,10 @@ status_order = ["menunggu", "melayani", "selesai"]
 cols = st.columns(len(status_order))
 for i, status in enumerate(status_order):
     with cols[i]:
-        docs = antrian_ref.where(field_path="tanggal", op_string="==", value=hari_ini) \
-                .where(field_path="status", op_string="==", value=status) \
-                .order_by("timestamp", direction="DESCENDING") \
-                .stream()
+        docs = antrian_ref.where("tanggal", "==", hari_ini) \
+                          .where("status", "==", status) \
+                          .order_by("timestamp", direction="DESCENDING") \
+                          .stream()
         data = []
         for doc in docs:
             d = doc.to_dict()
