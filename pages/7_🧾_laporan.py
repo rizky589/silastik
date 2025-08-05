@@ -7,7 +7,7 @@ from fpdf import FPDF
 import pytz
 
 st.set_page_config(page_title="Laporan", page_icon="🧾", layout="wide")
-st.title("Laporan Buku Tamu & Antrian")
+st.title("Laporan Buku Tamu")
 
 # 🔌 Koneksi ke Firestore
 db = init_firebase()

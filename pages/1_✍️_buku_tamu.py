@@ -63,10 +63,12 @@ if submit:
             "kontak": kontak_bersih,
             "layanan": layanan,
             "catatan": catatan,
-            #"waktu_masuk": now.strftime("%Y-%m-%d %H:%M:%S"),
-            #"waktu_selesai": now.strftime("%Y-%m-%d %H:%M:%S"),
-            #"status": "selesai"
-        }
+            "timestamp": now,
+            "tanggal": now.strftime("%Y-%m-%d"),
+            "jam": now.strftime("%H:%M:%S"),
+            "waktu_masuk": now,
+            "waktu_selesai": now
+            }
 
         try:
             buku_tamu_ref.add(data)

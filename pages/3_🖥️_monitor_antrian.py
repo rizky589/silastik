@@ -45,8 +45,8 @@ st.markdown(running_text, unsafe_allow_html=True)
 st.markdown("<br>", unsafe_allow_html=True)
 
 # 🔎 Ambil antrian yang sedang dilayani
-docs = antrian_ref.where("status", "==", "melayani") \
-                  .where("tanggal", "==", hari_ini) \
+docs = antrian_ref.where(field_path="status", op_string="==", value="melayani") \
+                  .where(field_path="tanggal", op_string="==", value=hari_ini) \
                   .order_by("timestamp", direction="DESCENDING") \
                   .limit(1).stream()
 
@@ -111,10 +111,10 @@ status_order = ["menunggu", "melayani", "selesai"]
 cols = st.columns(len(status_order))
 for i, status in enumerate(status_order):
     with cols[i]:
-        docs = antrian_ref.where("tanggal", "==", hari_ini) \
-                          .where("status", "==", status) \
-                          .order_by("timestamp", direction="DESCENDING") \
-                          .stream()
+        docs = antrian_ref.where(field_path="tanggal", op_string="==", value=hari_ini) \
+                .where(field_path="status", op_string="==", value=status) \
+                .order_by("timestamp", direction="DESCENDING") \
+                .stream()
         data = []
         for doc in docs:
             d = doc.to_dict()

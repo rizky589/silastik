@@ -48,8 +48,11 @@ def tts(text):
 
 # Ambil antrian dengan status 'menunggu' untuk hari ini
 next_antrian = None
-docs = antrian_ref.where("tanggal", "==", tanggal).where("status", "==", "menunggu") \
-                  .order_by("waktu").limit(1).stream()
+docs = antrian_ref.where(field_path="tanggal", op_string="==", value=tanggal) \
+                  .where(field_path="status", op_string="==", value="menunggu") \
+                  .order_by("waktu") \
+                  .limit(1) \
+                  .stream()
 
 for doc in docs:
     next_antrian = doc
@@ -118,7 +121,7 @@ else:
 st.markdown("---")
 if st.button("🗑️ Reset Antrian Hari Ini"):
     try:
-        docs_today = antrian_ref.where("tanggal", "==", tanggal).stream()
+        docs_today = antrian_ref.where(field_path="tanggal", op_string="==", value=tanggal).stream()
         deleted = 0
         for doc in docs_today:
             antrian_ref.document(doc.id).delete()
